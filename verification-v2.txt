@@ -1,0 +1,129 @@
+light version 2: what was verified
+2026-11-14, on this Mac, against the real lamp GVH6008DBA0
+
+Conclusion
+
+The `light` command at /opt/homebrew/bin/light now runs version 2 from this
+folder. On, off, brightness, colour, Kelvin, named looks, saved looks, candle,
+breathe, sunset, sunrise, bulb scenes, timers, pulse, check and tour all work
+on the real lamp. The lamp is back on the look found at the start: on, 70%,
+#ff7e00.
+
+Verification evidence (files are in work/evidence-v2/)
+
+1. Identity. 02-scan.jsonl: one device named GVH6008DBA0, a second H6008
+   (another bulb of the same model, weak signal) also in range and never touched. 03-watch.jsonl:
+   after the request to unplug, GVH6008DBA0 went silent at 18:07:54 for 63.4
+   seconds while 49 other devices were still heard, then returned under the same
+   identifier, 6D60E3AC-795E-3D7D-980A-FBBB1E7652B3, which is also the one
+   version 1 pinned. The owner's reply to the unplug request was "Great. And
+   yeah"; there is no explicit "I unplugged it" on record.
+
+2. Protocol. This bulb uses the two-step E7 handshake with AES-ECB/RC4, as
+   version 1 found. It has no ...2b12 version characteristic and does not use
+   the AES-GCM transport of homebridge-govee or govee-homeassistant.
+
+3. Every lasting change is checked twice by the tool itself: the bulb's
+   acknowledgement, then a separate state readback that must match.
+
+4. Independent of the bulb's own word: the MacBook's ambient light sensor
+   (tests/lux.py, no camera). In the dark room it read 0 to 2 with the lamp off
+   and 192 at white 2700K 100%, and followed dimming, the candle, breathe,
+   sunset and sunrise.
+
+5. Offline tests: 60 pass (.venv/bin/python -m unittest discover -s tests).
+   Two of them were seen failing before their fix: the final brightness after a
+   glide was not re-verified, and `off` trusted a stale state.
+
+6. Live runs with the installed command (tests/live_check.py --long):
+   live-check-installed.log            39 of 40. The miss was the check reading
+                                       a sunrise that started 17 s late.
+   live-check-run2-before-direct-connect.log   40 of 40, dark room.
+   live-check-final.log                38 of 40, on the final files
+                                       (candidate-sha256.txt). All bulb
+                                       readbacks passed. The two misses are
+                                       sensor steps for breathe and sunset: from
+                                       about 19:20 another light was on in the
+                                       room (sensor near 180 with this lamp at
+                                       70% orange, which alone reads 14). Those
+                                       two steps passed by sensor in run 2; the
+                                       code they exercise did not change between
+                                       run 2 and the final run. The check now
+                                       skips such steps and says so.
+
+7. Reliability fix found by testing: listening for Bluetooth advertisements
+   missed the lamp for up to 30 seconds at a time in this building, and one
+   `light status` failed that way. The helper now connects by the lamp's known
+   identifier first (12-direct-connect.log: 2.6 s, then 1.3 s straight after a
+   disconnect) and listens only as a fallback. After the change, three cold
+   starts took 2.2, 1.7 and 1.7 seconds, and the log shows no fallback used
+   during the final run.
+
+8. Measured limits (06-scale-probe.log, 09-kelvin-probe.log): white below 2700K
+   is clamped to 2700K (the bulb reports 2700K and the sensor reads the same
+   light); the colour mixes give about a fifth of the light of real white; any
+   setting wakes the bulb; darker colour values dim it smoothly.
+
+Material caveats
+
+- Nobody has judged the candle, breathe or the fades by eye. The sensor shows
+  they move as designed; whether they look good is the owner's call. Tuning
+  knobs: light candle calm | lively, and the Flame class in warm.py.
+- Bulb scenes: the bulb reports the selected scene and the sensor shows fire
+  and candlelight moving, but whether the uploaded animation data or a stored
+  default is playing was not separated.
+- Not tested: Mac asleep or lid closed during a timer or sunrise; the lamp
+  losing power mid-mode; a first run on a Mac that has never met the lamp
+  (the listening fallback); Bluetooth permission denied or Bluetooth off
+  (messages written, not exercised).
+- The helper uses internals of bleak 3.1.0 to connect by identifier.
+  requirements.txt pins that version.
+- Light.app is signed with the local Apple Development certificate, not
+  notarized. It and the lamp identifier are specific to this Mac.
+- No independent model audit was run. The tool handles no personal data.
+
+Next action
+
+Type `light` in a terminal. `light tour` shows everything in about a minute.
+
+Addendum, 2026-11-14 20:15: the menu bar panel (Lamp.app)
+
+Conclusion
+
+Lamp.app is built by build.sh, signed, and running. `light gui`, a click on the
+lamp icon, or Control-Option-Shift-L opens the panel.
+
+Verification evidence
+
+- Offline tests: 68 pass, including eight for what the panel asks of the helper
+  (live slider updates, the state snapshot, the looks list, forget, candle
+  tuning, save name checks).
+- Real mouse events sent to the panel's own window (the --test-dir aid in
+  gui/main.swift), each followed by reading the lamp back with `light status`:
+  ember swatch -> on, 20%, #ff2a00
+  brightness dragged -> 75%
+  warmth dragged -> white 3800K
+  power switch -> off, then on again from a swatch in the off panel
+  Candle -> candle running; Lively -> the helper logged the retune; Stop -> steady
+  Sunset -> running; 15 min -> "off at" moved to 15 minutes ahead; Stop
+  Breathe -> running; Stop -> back to the look before
+  Tour -> running; Stop -> back to the look before
+  Save this look, typed "guitest", Return -> a third row with that look, ringed
+  Sunrise (lamp off) -> sunrise running
+- Captures of the real panel in each state: work/gui-shots/ and
+  mockups/2026-11-14-menu-bar-control/real-panel.png.
+- The shortcut: macOS accepted the registration (status 0) and the function it
+  calls opens and closes the panel.
+- The owner used the panel by hand during the build; the helper log shows their
+  slider drags and look clicks arriving and being verified.
+
+Material caveats
+
+- Not exercised by a real key press or click from this session: pressing
+  Control-Option-Shift-L on the keyboard, the "Off in…" menu, the "Set" button
+  for a sunrise time, the right-click menu (scenes, Open at login, Quit), and
+  forgetting a saved look by right-click. The requests behind them are the same
+  ones the command line uses.
+- Open at login is off. The shortcut works only while Lamp is running.
+- The panel was looked at in dark appearance only; it draws its own dark panel
+  whatever the system appearance.

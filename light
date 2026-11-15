@@ -1,0 +1,11 @@
+#!/bin/bash
+# The `light` command. Works from any folder and through a symlink.
+set -euo pipefail
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  HERE="$(cd "$(dirname "$SOURCE")" && pwd -P)"
+  SOURCE="$(readlink "$SOURCE")"
+  case "$SOURCE" in /*) ;; *) SOURCE="$HERE/$SOURCE" ;; esac
+done
+ROOT="$(cd "$(dirname "$SOURCE")" && pwd -P)"
+exec "$ROOT/.venv/bin/python" "$ROOT/cli.py" "$@"

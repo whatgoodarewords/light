@@ -1,0 +1,16 @@
+# Built on this Mac by build.sh
+.venv/
+*.app/
+__pycache__/
+.DS_Store
+
+# Runtime files: the helper's log and socket, test captures, evidence logs
+work/
+
+# Your own saved looks
+presets.json
+
+# Version 1's notes stay local; its code is in v1/
+v1/README.txt
+# The same file as v1/launcher.c
+/launcher.c

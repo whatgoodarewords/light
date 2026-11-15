@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>govee-light: a control in the menu bar (mock-ups, 2026-11-14)</title>
+<style>
+  /* Type: the macOS system face throughout. Reason: this is a native macOS control, and it should read as part of the system. */
+  :root {
+    --page: #f3efe9; --ink: #221d19; --soft: #6b625a; --line: #d9d2c8; --card: #fbf9f6;
+    --pop: rgba(44, 39, 36, 0.94); --pop-line: rgba(255,255,255,0.13); --pop-ink: #f4efe9; --pop-soft: #a79d93;
+    --ctl: rgba(255,255,255,0.10); --ctl-on: #f08a24;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 650; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 19px; font-weight: 650; margin: 52px 0 6px; }
+  p { margin: 0 0 12px; max-width: 70ch; }
+  .soft { color: var(--soft); }
+
+  .desks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 18px; }
+  .desks.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 1000px) { .desks, .desks.two { grid-template-columns: 1fr; } }
+  figure { margin: 0; }
+  figcaption { margin-top: 10px; font-size: 14px; color: var(--soft); }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* a slice of desktop */
+  .desk { position: relative; border-radius: 12px; overflow: hidden; min-height: 540px; padding-bottom: 22px;
+          background: radial-gradient(120% 90% at 80% 0%, #6a3a1e 0%, #3a2218 38%, #1b1412 75%); border: 1px solid #00000022; }
+  .desk.short { min-height: 430px; }
+  .bar { height: 26px; background: rgba(30,24,21,0.55); display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 0 12px;
+         color: #f1ebe4; font-size: 13px; font-weight: 500; }
+  .bar .ic { width: 26px; height: 20px; border-radius: 5px; display: grid; place-items: center; }
+  .bar .ic.open { background: rgba(255,255,255,0.22); }
+  .bar svg { width: 15px; height: 15px; }
+
+  /* the popover */
+  .pop { width: 316px; margin: 7px 10px 0 auto; background: var(--pop); color: var(--pop-ink); border: 1px solid var(--pop-line);
+         border-radius: 13px; box-shadow: 0 18px 50px rgba(0,0,0,0.55); padding: 14px 14px 10px; font-size: 13px; }
+  .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .state { font-size: 15px; }
+  .state b { font-weight: 650; }
+  .state span { color: var(--pop-soft); }
+  .switch { width: 38px; height: 22px; border-radius: 11px; background: var(--ctl); position: relative; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #e9e3dc; }
+  .switch.on { background: var(--ctl-on); }
+  .switch.on::after { left: 18px; background: #fff; }
+
+  .field { margin-bottom: 12px; }
+  .field .lab { display: flex; justify-content: space-between; color: var(--pop-soft); margin-bottom: 6px; }
+  .field .lab em { font-style: normal; color: var(--pop-ink); }
+  .slider { position: relative; height: 22px; border-radius: 11px; background: var(--ctl); }
+  .slider .fill { position: absolute; inset: 0 auto 0 0; border-radius: 11px; background: linear-gradient(90deg, #7a4a1c, #f0a040); }
+  .slider .knob { position: absolute; top: 1px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+  .slider.warm { background: linear-gradient(90deg, #ff3300 0%, #ff8200 14.5%, #ffae54 31%, #ffd5a1 55%, #fff9fb 100%); }
+  .slider.warm .mark { position: absolute; top: -3px; bottom: -3px; left: 31%; width: 2px; background: rgba(20,14,10,0.75); border-radius: 1px; }
+  .hint { color: var(--pop-soft); font-size: 11.5px; margin-top: 6px; line-height: 1.35; }
+
+  .sect { color: var(--pop-soft); margin: 14px 0 7px; }
+  .looks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px 6px; }
+  .look { text-align: center; font-size: 11px; color: #d9d1c8; }
+  .look i { display: block; height: 30px; border-radius: 8px; margin-bottom: 3px; border: 1px solid rgba(255,255,255,0.10); font-style: normal; }
+  .look.sel i { outline: 2px solid #fff; outline-offset: 1px; }
+  .look.sel { color: #fff; }
+
+  .modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .btn { background: var(--ctl); border-radius: 8px; padding: 7px 0; text-align: center; color: var(--pop-ink); }
+  .btn.go { background: var(--ctl-on); color: #1c120a; font-weight: 600; }
+  .running { background: rgba(240,138,36,0.16); border: 1px solid rgba(240,138,36,0.45); border-radius: 10px; padding: 9px 10px; }
+  .running .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .running .top b { font-weight: 600; }
+  .running .stop { background: #f4efe9; color: #241a12; font-weight: 600; border-radius: 7px; padding: 4px 12px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--ctl); border-radius: 8px; padding: 2px; }
+  .seg div { text-align: center; padding: 4px 0; border-radius: 6px; color: var(--pop-soft); }
+  .seg .on { background: rgba(255,255,255,0.20); color: #fff; }
+
+  .foot { display: flex; justify-content: space-between; margin-top: 13px; padding-top: 9px; border-top: 1px solid var(--pop-line); color: #d9d1c8; }
+  .dim { opacity: 0.38; }
+
+  /* the two other shapes */
+  .win { width: 340px; margin: 34px auto 0; background: var(--pop); color: var(--pop-ink); border: 1px solid var(--pop-line); border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.55); font-size: 13px; }
+  .win .title { height: 30px; display: flex; align-items: center; justify-content: center; position: relative; color: var(--pop-soft); border-bottom: 1px solid var(--pop-line); }
+  .win .dots { position: absolute; left: 11px; display: flex; gap: 7px; }
+  .win .dots b { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+  .win .dots b:nth-child(2) { background: #febc2e; } .win .dots b:nth-child(3) { background: #28c840; }
+  .win .body { padding: 14px; }
+  .menu { width: 232px; margin: 7px 10px 0 auto; background: var(--pop); color: var(--pop-ink); border: 1px solid var(--pop-line); border-radius: 9px;
+          box-shadow: 0 18px 50px rgba(0,0,0,0.55); padding: 5px; font-size: 13.5px; }
+  .menu div { padding: 4px 10px; border-radius: 5px; display: flex; justify-content: space-between; }
+  .menu .hi { background: #f08a24; color: #1c120a; }
+  .menu hr { border: 0; border-top: 1px solid var(--pop-line); margin: 5px 8px; }
+  .menu .s { color: var(--pop-soft); }
+
+  table { border-collapse: collapse; margin-top: 12px; font-size: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 7px 12px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-weight: 600; background: #efe9e1; }
+  tr:last-child td { border-bottom: 0; font-weight: 650; }
+  .scroll { overflow-x: auto; }
+  ul { margin: 8px 0 0; padding-left: 20px; max-width: 72ch; }
+  li { margin-bottom: 5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>A control for the lamp in the menu bar</h1>
+  <p>These are mock-ups, not a built app. The pick is a small panel that opens under a lamp icon in the menu bar. It would use the same helper as the <code>light</code> command, so both always agree on what the lamp is doing.</p>
+  <p class="soft">Three ways it could look are below. Say which one, and what to change, before anything gets built.</p>
+
+  <h2>The pick: a panel under a menu bar icon</h2>
+  <p class="soft">One click from anywhere. Sliders for brightness and warmth, your looks as swatches, the moving modes as buttons.</p>
+
+  <div class="desks">
+    <figure>
+      <div class="desk">
+        <div class="bar"><div class="ic open"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"><path d="M5.2 9.6A4 4 0 1 1 10.8 9.6c-.5.5-.8 1-.8 1.7H6c0-.7-.3-1.2-.8-1.700Z" fill="#ffb347" stroke="#fff"/><path d="M6.3 13.2h3.4M6.9 14.9h2.2"/></svg></div><span>Sat 14 Nov&nbsp;&nbsp;19:42</span></div>
+        <div class="pop">
+          <div class="head"><div class="state"><b>On</b> <span>70% · the 1800K mix</span></div><div class="switch on"></div></div>
+          <div class="field"><div class="lab"><span>Brightness</span><em>70%</em></div><div class="slider"><div class="fill" style="width:70%"></div><div class="knob" style="left:70%"></div></div></div>
+          <div class="field"><div class="lab"><span>Warmth</span><em>1800K</em></div><div class="slider warm"><div class="mark"></div><div class="knob" style="left:14.5%"></div></div>
+            <div class="hint">Left of the mark the bulb mixes colours, which is dimmer. Real white starts at 2700K.</div></div>
+          <div class="sect">Looks</div>
+          <div class="looks">
+            <div class="look"><i style="background:#5e0a02"></i>coals</div>
+            <div class="look"><i style="background:#8f1a02"></i>ember</div>
+            <div class="look"><i style="background:#b83c0e"></i>dusk</div>
+            <div class="look"><i style="background:#a85202"></i>amber</div>
+            <div class="look"><i style="background:#cc871a"></i>gold</div>
+            <div class="look sel"><i style="background:#8c4800"></i>glow</div>
+            <div class="look"><i style="background:#c0731f"></i>lamp</div>
+            <div class="look"><i style="background:#cf8d44"></i>tungsten</div>
+            <div class="look"><i style="background:#f0c08a"></i>paper</div>
+            <div class="look"><i style="background:#ffe7cc"></i>day</div>
+          </div>
+          <div class="sect">Moving light</div>
+          <div class="modes"><div class="btn">Candle</div><div class="btn">Breathe</div><div class="btn">Sunset</div><div class="btn">Sunrise</div></div>
+          <div class="foot"><span>Off in…</span><span>Save this look…</span><span>Tour</span></div>
+        </div>
+      </div>
+      <figcaption><b>Lamp on, steady.</b> The selected look has a white ring. Dragging either slider changes the lamp as you drag.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="desk">
+        <div class="bar"><div class="ic open"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"><path d="M5.2 9.6A4 4 0 1 1 10.8 9.6c-.5.5-.8 1-.8 1.7H6c0-.7-.3-1.2-.8-1.700Z" fill="#ffb347" stroke="#fff"/><path d="M6.3 13.2h3.4M6.9 14.9h2.2"/></svg></div><span>Sat 14 Nov&nbsp;&nbsp;22:05</span></div>
+        <div class="pop">
+          <div class="head"><div class="state"><b>On</b> <span>30% · candle</span></div><div class="switch on"></div></div>
+          <div class="field"><div class="lab"><span>Brightness</span><em>30%</em></div><div class="slider"><div class="fill" style="width:30%"></div><div class="knob" style="left:30%"></div></div>
+            <div class="hint">Brightness works while the candle runs.</div></div>
+          <div class="sect">Moving light</div>
+          <div class="running">
+            <div class="top"><span><b>Candle</b> running, off at 22:50</span><span class="stop">Stop</span></div>
+            <div class="seg"><div>Calm</div><div class="on">Normal</div><div>Lively</div></div>
+          </div>
+          <div class="hint" style="margin-top:9px">Runs from this Mac. Stops if the Mac sleeps or leaves the room.</div>
+          <div class="sect">Looks</div>
+          <div class="looks dim">
+            <div class="look"><i style="background:#5e0a02"></i>coals</div>
+            <div class="look"><i style="background:#8f1a02"></i>ember</div>
+            <div class="look"><i style="background:#b83c0e"></i>dusk</div>
+            <div class="look"><i style="background:#a85202"></i>amber</div>
+            <div class="look"><i style="background:#cc871a"></i>gold</div>
+          </div>
+          <div class="hint">Picking a look stops the candle.</div>
+          <div class="foot"><span>Off at 22:50 · change</span><span>Tour</span></div>
+        </div>
+      </div>
+      <figcaption><b>Candle running.</b> The mode takes over the middle of the panel: what is running, when it ends, and Stop.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="desk">
+        <div class="bar"><div class="ic open"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"><path d="M5.2 9.6A4 4 0 1 1 10.8 9.6c-.5.5-.8 1-.8 1.7H6c0-.7-.3-1.2-.8-1.700Z"/><path d="M6.3 13.2h3.4M6.9 14.9h2.2"/></svg></div><span>Sun 15 Nov&nbsp;&nbsp;07:58</span></div>
+        <div class="pop">
+          <div class="head" style="margin-bottom:4px"><div class="state"><b>Off</b></div><div class="switch"></div></div>
+          <div class="hint" style="margin-top:0">Comes back at 70%, the 1800K mix.</div>
+          <div class="sect">Turn on as</div>
+          <div class="looks">
+            <div class="look"><i style="background:#5e0a02"></i>coals</div>
+            <div class="look"><i style="background:#8f1a02"></i>ember</div>
+            <div class="look"><i style="background:#b83c0e"></i>dusk</div>
+            <div class="look"><i style="background:#a85202"></i>amber</div>
+            <div class="look"><i style="background:#cc871a"></i>gold</div>
+            <div class="look sel"><i style="background:#8c4800"></i>glow</div>
+            <div class="look"><i style="background:#c0731f"></i>lamp</div>
+            <div class="look"><i style="background:#cf8d44"></i>tungsten</div>
+            <div class="look"><i style="background:#f0c08a"></i>paper</div>
+            <div class="look"><i style="background:#ffe7cc"></i>day</div>
+          </div>
+          <div class="sect">Moving light</div>
+          <div class="modes"><div class="btn">Candle</div><div class="btn">Breathe</div><div class="btn dim">Sunset</div><div class="btn go">Sunrise</div></div>
+          <div class="hint" style="margin-top:9px">Sunrise: deep red to warm white over 20 minutes.</div>
+          <div class="foot"><span>Sunrise at…</span><span>Tour</span></div>
+        </div>
+      </div>
+      <figcaption><b>Lamp off.</b> The icon is hollow. The panel says what the lamp will come back as, and any look or mode turns it on.</figcaption>
+    </figure>
+  </div>
+
+  <h2>The two other shapes</h2>
+  <div class="desks two">
+    <figure>
+      <div class="desk short">
+        <div class="bar"><span>Sat 14 Nov&nbsp;&nbsp;19:42</span></div>
+        <div class="win">
+          <div class="title"><div class="dots"><b></b><b></b><b></b></div>Light</div>
+          <div class="body">
+            <div class="head"><div class="state"><b>On</b> <span>70% · the 1800K mix</span></div><div class="switch on"></div></div>
+            <div class="field"><div class="lab"><span>Brightness</span><em>70%</em></div><div class="slider"><div class="fill" style="width:70%"></div><div class="knob" style="left:70%"></div></div></div>
+            <div class="field"><div class="lab"><span>Warmth</span><em>1800K</em></div><div class="slider warm"><div class="mark"></div><div class="knob" style="left:14.5%"></div></div></div>
+            <div class="looks">
+              <div class="look"><i style="background:#5e0a02"></i>coals</div>
+              <div class="look"><i style="background:#8f1a02"></i>ember</div>
+              <div class="look"><i style="background:#b83c0e"></i>dusk</div>
+              <div class="look"><i style="background:#a85202"></i>amber</div>
+              <div class="look"><i style="background:#cc871a"></i>gold</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>A small window with a Dock icon.</b> The same controls, but you have to find the window or the Dock icon first, and it takes a place among your windows.</figcaption>
+    </figure>
+    <figure>
+      <div class="desk short">
+        <div class="bar"><div class="ic open"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"><path d="M5.2 9.6A4 4 0 1 1 10.8 9.6c-.5.5-.8 1-.8 1.7H6c0-.7-.3-1.2-.8-1.700Z" fill="#ffb347" stroke="#fff"/><path d="M6.3 13.2h3.4M6.9 14.9h2.2"/></svg></div><span>Sat 14 Nov&nbsp;&nbsp;19:42</span></div>
+        <div class="menu">
+          <div class="s"><span>On · 70% · the 1800K mix</span></div>
+          <hr>
+          <div><span>Turn off</span></div>
+          <div><span>Brightness</span><span class="s">›</span></div>
+          <div class="hi"><span>Looks</span><span>›</span></div>
+          <hr>
+          <div><span>Candle</span></div>
+          <div><span>Breathe</span></div>
+          <div><span>Sunset, 30 minutes</span></div>
+          <div><span>Sunrise at…</span></div>
+          <hr>
+          <div><span>Off in 30 minutes</span></div>
+          <div><span>Tour</span></div>
+        </div>
+      </div>
+      <figcaption><b>A plain menu.</b> The quickest to build and the most ordinary. No sliders, so brightness and warmth become fixed steps in submenus, and no colour swatches.</figcaption>
+    </figure>
+  </div>
+
+  <h2>How the three scored</h2>
+  <p class="soft">Each scored 1 to 5 on eight criteria, weighted by rank. A page in the browser was left out: it would need a small web server on this Mac that any page open in your browser could try to reach.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Criterion</th><th>Weight</th><th>Panel under the icon</th><th>Small window</th><th>Plain menu</th></tr></thead>
+    <tbody>
+      <tr><td>Does the job plainly</td><td>0.34</td><td>5</td><td>4</td><td>4</td></tr>
+      <tr><td>Nothing leaves the Mac</td><td>0.21</td><td>5</td><td>5</td><td>5</td></tr>
+      <tr><td>Ease of use</td><td>0.15</td><td>5</td><td>3</td><td>3</td></tr>
+      <tr><td>Fits the existing tool</td><td>0.11</td><td>4</td><td>4</td><td>5</td></tr>
+      <tr><td>Covers everything light does</td><td>0.08</td><td>5</td><td>5</td><td>3</td></tr>
+      <tr><td>Ready for daily use</td><td>0.05</td><td>4</td><td>4</td><td>5</td></tr>
+      <tr><td>Feels like part of macOS</td><td>0.03</td><td>5</td><td>3</td><td>3</td></tr>
+      <tr><td>Simplicity</td><td>0.02</td><td>4</td><td>3</td><td>5</td></tr>
+      <tr><td>Weighted total</td><td></td><td>4.77</td><td>4.05</td><td>4.09</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>What building the pick involves</h2>
+  <ul>
+    <li>A small native macOS app in Swift, living next to the <code>light</code> files. It sends the same requests the command sends, so nothing about the lamp protocol is duplicated.</li>
+    <li>No new Bluetooth permission: the existing helper already has it.</li>
+    <li>Optional: start at login. Off unless you turn it on.</li>
+    <li>While the panel is open the helper stays connected, so the Govee app cannot reach the bulb during that time. It lets go 45 seconds after you close the panel.</li>
+  </ul>
+</main>
+</body>
+</html>
