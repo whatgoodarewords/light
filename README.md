@@ -122,3 +122,7 @@ The live check runs the real `light` command against the real lamp. It also read
 `v1/` holds the original one-shot version this grew from.
 
 Logs are in `work/agent.log`. Your saved looks are in `presets.json`.
+
+## Licence
+
+MIT, see `LICENSE`. The protocol reference this builds on has its own MIT notice in `THIRD_PARTY_LICENSE.txt`.
