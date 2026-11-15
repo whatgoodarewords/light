@@ -85,6 +85,9 @@ struct PanelView: View {
         .padding(.bottom, 12)
     }
 
+    /// True while the lamp shows a plain colour (not real white, not a scene).
+    private var colourShown: Bool { lamp.white == 0 && lamp.scene.isEmpty }
+
     private var headerDetail: String {
         guard lamp.known, lamp.on else { return "" }
         return "  \(Int(lamp.bright))% · \(running ? lamp.mode : lamp.what)"
@@ -95,11 +98,15 @@ struct PanelView: View {
     private var onBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             brightness
-            field("Warmth", value: lamp.white > 0 || lamp.mix > 0 || lamp.draggingWarmth ? "\(Int(lamp.warmth))K" : lamp.what) {
+            field("Warmth", value: lamp.white > 0 || lamp.mix > 0 || lamp.draggingWarmth ? "\(Int(lamp.warmth))K" : "") {
                 WarmthSlider(kelvin: $lamp.warmth, showKnob: lamp.white > 0 || lamp.mix > 0 || lamp.draggingWarmth,
                              onDrag: lamp.dragWarmth, onEnd: lamp.endWarmth)
             }
             hint("Left of the mark the bulb mixes colours, which is dimmer. Real white starts at 2700K.").padding(.top, 6)
+            field("Colour", value: colourShown ? "#" + lamp.rgb.map { String(format: "%02x", $0) }.joined() : "") {
+                ColourPad(rgb: lamp.rgb, showKnob: colourShown, onDrag: lamp.dragColour, onEnd: lamp.endColour)
+            }
+            .padding(.top, 12)
             section("Looks")
             looksGrid
             section("Moving light")
@@ -389,6 +396,80 @@ private struct Track<Background: View>: View {
         }
         .frame(height: 22)
     }
+}
+
+/// Any colour: hue runs left to right, and the colour pales toward white going down.
+/// Brightness stays with the brightness slider.
+struct ColourPad: View {
+    let rgb: [Int]
+    let showKnob: Bool
+    let onDrag: ([Int]) -> Void
+    let onEnd: ([Int]) -> Void
+    @State private var last: [Int] = [255, 0, 0]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let (hue, sat) = hueSaturation(rgb)
+            ZStack(alignment: .topLeading) {
+                ZStack {
+                    LinearGradient(colors: stride(from: 0.0, through: 1.0, by: 1.0 / 6).map { Color(hue: $0, saturation: 1, brightness: 1) },
+                                   startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(colors: [Color.white.opacity(0), Color.white], startPoint: .top, endPoint: .bottom)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                if showKnob {
+                    Circle().fill(Color(.sRGB, red: Double(rgb[0]) / 255, green: Double(rgb[1]) / 255, blue: Double(rgb[2]) / 255, opacity: 1))
+                        .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+                        .frame(width: 18, height: 18)
+                        .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
+                        .offset(x: min(max(CGFloat(hue) * w - 9, 0), w - 18), y: min(max(CGFloat(1 - sat) * h - 9, 0), h - 18))
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { g in
+                    let colour = colourAt(hue: Double(min(max(g.location.x / w, 0), 1)), saturation: 1 - Double(min(max(g.location.y / h, 0), 1)))
+                    if colour != last {
+                        last = colour
+                        onDrag(colour)
+                    }
+                }
+                .onEnded { _ in onEnd(last) })
+        }
+        .frame(height: 64)
+        .accessibilityLabel("Colour")
+    }
+}
+
+/// Full-brightness colour for a hue (0 to 1) and saturation (0 to 1), as red, green, blue 0 to 255.
+func colourAt(hue: Double, saturation: Double) -> [Int] {
+    let h = (hue >= 1 ? 0 : hue) * 6
+    let i = Int(h)
+    let f = h - Double(i)
+    let p = 1 - saturation, q = 1 - saturation * f, t = 1 - saturation * (1 - f)
+    let (r, g, b): (Double, Double, Double)
+    switch i {
+    case 0: (r, g, b) = (1, t, p)
+    case 1: (r, g, b) = (q, 1, p)
+    case 2: (r, g, b) = (p, 1, t)
+    case 3: (r, g, b) = (p, q, 1)
+    case 4: (r, g, b) = (t, p, 1)
+    default: (r, g, b) = (1, p, q)
+    }
+    return [Int((r * 255).rounded()), Int((g * 255).rounded()), Int((b * 255).rounded())]
+}
+
+/// Where a colour sits on the pad: hue and saturation, each 0 to 1.
+func hueSaturation(_ rgb: [Int]) -> (Double, Double) {
+    let r = Double(rgb[0]) / 255, g = Double(rgb[1]) / 255, b = Double(rgb[2]) / 255
+    let hi = max(r, g, b), lo = min(r, g, b), d = hi - lo
+    guard hi > 0, d > 0 else { return (0, 0) }
+    var h: Double
+    if hi == r { h = (g - b) / d } else if hi == g { h = 2 + (b - r) / d } else { h = 4 + (r - g) / d }
+    h /= 6
+    if h < 0 { h += 1 }
+    return (h, d / hi)
 }
 
 struct BrightnessSlider: View {

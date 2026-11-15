@@ -598,6 +598,28 @@ class Agent:
                     PROBLEM.write_text("")
             return {"ok": True, "text": self.status_text() + (f"\nNote: {note}" if note else ""), "look": asdict(self.look)}
 
+        if cmd == "find":
+            # For setting the tool up with another bulb: list nearby Govee lights with the two
+            # values light.py pins (NAME and ADDRESS). Listens only; connects to nothing.
+            try:
+                found = await asyncio.wait_for(BleakScanner.discover(timeout=10, return_adv=True), 50)
+            except asyncio.TimeoutError:
+                raise RuntimeError(
+                    "macOS has not allowed Light to use Bluetooth yet. Answer the prompt on screen, or allow Light "
+                    "under System Settings, Privacy & Security, Bluetooth. Then try again."
+                ) from None
+            rows = []
+            for device, adv in found.values():
+                name = adv.local_name or device.name or ""
+                if name.startswith(("GVH", "Govee", "ihoment", "GBK")):
+                    rows.append((adv.rssi, name, device.address))
+            if not rows:
+                return {"ok": False, "text": "No Govee light answered in 10 seconds. Check that it has power and is close, then try again."}
+            lines = [f"  {name:<22} {address}   signal {rssi}" + ("   (the lamp this tool controls now)" if address.upper() == proto.ADDRESS else "")
+                     for rssi, name, address in sorted(rows, reverse=True)]
+            return {"ok": True, "text": "Govee lights heard nearby, strongest signal first:\n" + "\n".join(lines)
+                    + "\nTo control one, put its name and identifier in NAME and ADDRESS at the top of light.py."}
+
         if cmd == "peek":  # what the helper knows, without touching the lamp
             return {"ok": True, "text": ""}
 

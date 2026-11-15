@@ -81,6 +81,10 @@ class FakeLamp:
         await self.command(5, *warm.scene_select_payload(code))
 
 
+async def discover_none():
+    return {}
+
+
 class AgentCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -253,6 +257,31 @@ class PanelTests(AgentCase):
     async def test_save_refuses_names_that_already_mean_something(self):
         for bad in ("amber", "Bad Name", "", "9lives"):
             self.assertFalse((await self.do(cmd="save", name=bad))["ok"], bad)
+
+    async def test_find_lists_govee_lights_only_and_connects_to_nothing(self):
+        mine = SimpleNamespace(address=light.ADDRESS, name=light.NAME)
+        other = SimpleNamespace(address="11111111-2222-3333-4444-555555555555", name=None)
+        phone = SimpleNamespace(address="99999999-2222-3333-4444-555555555555", name="Somebody's phone")
+        heard = {
+            mine.address: (mine, SimpleNamespace(local_name=light.NAME, rssi=-40)),
+            other.address: (other, SimpleNamespace(local_name="GVH6008FFFF", rssi=-80)),
+            phone.address: (phone, SimpleNamespace(local_name=None, rssi=-30)),
+        }
+
+        async def discover(timeout, return_adv):
+            return heard
+
+        with patch.object(agent.BleakScanner, "discover", discover):
+            r = await self.do(cmd="find")
+        lines = r["text"].splitlines()
+        self.assertTrue(r["ok"])
+        self.assertIn(light.NAME, lines[1])
+        self.assertIn("the lamp this tool controls now", lines[1])
+        self.assertIn("GVH6008FFFF", lines[2])
+        self.assertNotIn("phone", r["text"])
+        self.assertEqual((self.connects, self.fake.sent), (0, []))
+        with patch.object(agent.BleakScanner, "discover", lambda timeout, return_adv: discover_none()):
+            self.assertFalse((await self.do(cmd="find"))["ok"])
 
     async def test_peek_and_looks_do_not_touch_the_lamp(self):
         await self.do(cmd="peek")

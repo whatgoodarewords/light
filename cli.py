@@ -26,7 +26,7 @@ RESERVED = {
     "on", "off", "toggle", "up", "down", "brighter", "dimmer", "warmer", "cooler", "status", "stop", "quit",
     "release", "back", "undo", "list", "looks", "presets", "scenes", "help", "scene", "candle", "breathe", "sunset",
     "sunrise", "pulse", "ok", "fail", "tour", "save", "forget", "check", "test", "bright", "color", "colour",
-    "kelvin", "preset", "in", "at", "for", "calm", "lively", "gui", "menu",
+    "kelvin", "preset", "in", "at", "for", "calm", "lively", "gui", "menu", "find",
 }
 
 HELP = """light: your Govee lamp (GVH6008DBA0) from the terminal
@@ -70,6 +70,7 @@ Timers and scripts
   light pulse ok            two soft gold swells, then back to your look
   light pulse fail          two slow red ones.  Example: make test && light pulse ok || light pulse fail
   light check               switch, dim and recolour briefly, verify each step, restore
+  light find                list Govee lights nearby, for setting this up with another bulb
   light status --json       the current look for scripts
 
 Good to know
@@ -183,7 +184,7 @@ def parse(argv: list) -> dict:
     verb, rest = words[0], words[1:]
     simple = {"status": {"cmd": "status"}, "toggle": {"cmd": "toggle"}, "stop": {"cmd": "stop"},
               "quit": {"cmd": "quit"}, "release": {"cmd": "quit"}, "back": {"cmd": "back"}, "undo": {"cmd": "back"},
-              "tour": {"cmd": "tour"}, "check": {"cmd": "check"}, "test": {"cmd": "check"},
+              "tour": {"cmd": "tour"}, "check": {"cmd": "check"}, "test": {"cmd": "check"}, "find": {"cmd": "find"},
               "up": {"cmd": "nudge", "what": "up"}, "brighter": {"cmd": "nudge", "what": "up"},
               "down": {"cmd": "nudge", "what": "down"}, "dimmer": {"cmd": "nudge", "what": "down"},
               "warmer": {"cmd": "nudge", "what": "warmer"}, "cooler": {"cmd": "nudge", "what": "cooler"},

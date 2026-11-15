@@ -33,6 +33,7 @@ final class LampModel: ObservableObject {
 
     var draggingBright = false
     var draggingWarmth = false
+    var draggingColour = false
 
     private let helper: Helper
     private let queue = DispatchQueue(label: "lamp.requests")
@@ -113,10 +114,12 @@ final class LampModel: ObservableObject {
         guard nowKnown else { return }
         known = true
         on = ui["on"] as? Bool ?? false
-        rgb = ui["rgb"] as? [Int] ?? rgb
-        white = ui["white"] as? Int ?? 0
-        mix = ui["mix"] as? Int ?? 0
-        scene = ui["scene"] as? String ?? ""
+        if !draggingColour {
+            rgb = ui["rgb"] as? [Int] ?? rgb
+            white = ui["white"] as? Int ?? 0
+            mix = ui["mix"] as? Int ?? 0
+            scene = ui["scene"] as? String ?? ""
+        }
         if !draggingBright {
             bright = Double(ui["bright"] as? Int ?? Int(bright))
         }
@@ -127,7 +130,7 @@ final class LampModel: ObservableObject {
 
     /// Ask the lamp how it is. Used while the panel is open.
     func refresh() {
-        if statusBusy || changeBusy || draggingBright || draggingWarmth { return }
+        if statusBusy || changeBusy || draggingBright || draggingWarmth || draggingColour { return }
         statusBusy = true
         send(["cmd": "status"]) { self.statusBusy = false }
     }
@@ -196,6 +199,22 @@ final class LampModel: ObservableObject {
         mix = k < 2700 ? k : 0
         scene = ""
         change(["cmd": "look", "kelvin": k])
+    }
+
+    func dragColour(_ colour: [Int]) {
+        draggingColour = true
+        rgb = colour
+        white = 0
+        mix = 0
+        scene = ""
+        live(["rgb": colour])
+    }
+
+    func endColour(_ colour: [Int]) {
+        livePending = nil
+        draggingColour = false
+        rgb = colour
+        change(["cmd": "look", "rgb": colour])
     }
 
     // -------------------------------------------------------------- actions

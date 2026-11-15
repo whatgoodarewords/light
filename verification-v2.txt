@@ -127,3 +127,13 @@ Material caveats
 - Open at login is off. The shortcut works only while Lamp is running.
 - The panel was looked at in dark appearance only; it draws its own dark panel
   whatever the system appearance.
+
+Addendum, 2026-11-14 20:30: colour pad and light find
+
+- Colour pad in the panel: a real-mouse drag across the pad sent live colour
+  updates and ended verified by the lamp at #0404ff; a click at the warm end
+  gave #ff900c. Capture: docs/panel.png.
+- light find: lists nearby Govee lights with name and identifier. One offline
+  test; one live run on this Mac listed seven. A bulb this Mac is connected to
+  does not appear in it, because a connected bulb stops announcing itself.
+- Offline tests: 69 pass.
